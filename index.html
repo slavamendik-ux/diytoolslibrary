@@ -685,10 +685,60 @@
     @media (max-width: 600px) {
       .contact-chip { display: none; }
     }
+
+    /* ============================================================
+       COOKIE CONSENT BANNER, MAP PLACEHOLDER, COOKIE-SETTINGS LINK
+       ============================================================ */
+    .cookie-banner {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 1000;
+      max-width: 760px; margin: 0 auto;
+      background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 22px 26px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    .cookie-banner[hidden] { display: none; }
+    .cookie-banner:focus { outline: none; }
+    .cookie-text p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.55; }
+    .cookie-text a { color: var(--green-dark); }
+    .cookie-actions { display: flex; gap: 10px; flex-shrink: 0; }
+    .cookie-actions .btn { padding: 12px 20px; font-size: .88rem; white-space: nowrap; }
+    .cookie-settings-link {
+      background: none; border: 0; padding: 0; font: inherit; font-size: .85rem; font-weight: 700;
+      color: rgba(255,255,255,.85); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+    }
+    .cookie-settings-link:hover { color: #fff; }
+
+    .map-placeholder {
+      height: 320px; border-radius: 16px; background: rgba(255,255,255,.06);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; padding: 24px; text-align: center;
+    }
+    .map-placeholder p { margin: 0; max-width: 34ch; color: rgba(255,255,255,.78); font-size: .92rem; line-height: 1.5; }
+    .map-placeholder-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .map-placeholder .btn { padding: 11px 18px; font-size: .86rem; }
+    .map-placeholder .btn-outline { border-color: rgba(255,255,255,.35); color: #fff; }
+
+    @media (max-width: 600px) {
+      .cookie-banner { left: 10px; right: 10px; bottom: 10px; padding: 18px 18px 16px; flex-direction: column; align-items: stretch; gap: 14px; }
+      .cookie-actions { justify-content: stretch; }
+      .cookie-actions .btn { flex: 1; }
+    }
+
   </style>
 </head>
 
 <body>
+
+  <!-- Cookie consent: Google Analytics (and the Google Maps embed below) load only after "Accept". -->
+  <div id="cookieBanner" class="cookie-banner" role="region" aria-label="Cookies" tabindex="-1" hidden>
+    <div class="cookie-text">
+      <p>We use Google Analytics cookies to understand how visitors use this site, and load a Google Maps embed to show our location. Both are optional and only load if you accept &mdash; the site works fine either way. <a href="privacy-policy.html#cookies">Learn more</a></p>
+    </div>
+    <div class="cookie-actions">
+      <button type="button" id="cookieDecline" class="btn btn-outline">Decline</button>
+      <button type="button" id="cookieAccept" class="btn btn-primary">Accept</button>
+    </div>
+  </div>
 
   <div class="topbar">
     <div class="container topbar-inner">
@@ -841,14 +891,14 @@
           </p>
         </div>
         <div class="areas-grid">
-          <div class="areas-map-card">
-            <iframe
-              title="Map showing DIY Tools Library CIC at St Mary's Complex, 13 Waverley St, Bootle, Liverpool L20 4AP"
-              src="https://www.google.com/maps?q=St+Mary%27s+Complex%2C+13+Waverley+St%2C+Bootle%2C+Liverpool+L20+4AP&output=embed"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              allowfullscreen>
-            </iframe>
+          <div class="areas-map-card" id="mapCard" data-map-src="https://www.google.com/maps?q=St+Mary%27s+Complex%2C+13+Waverley+St%2C+Bootle%2C+Liverpool+L20+4AP&amp;output=embed" data-map-title="Map showing DIY Tools Library CIC at St Mary's Complex, 13 Waverley St, Bootle, Liverpool L20 4AP">
+            <div class="map-placeholder" id="mapPlaceholder">
+              <p>The map loads from Google Maps only when you choose &mdash; Google may set cookies once it loads.</p>
+              <div class="map-placeholder-actions">
+                <button type="button" id="loadMapBtn" class="btn btn-primary">Show map</button>
+                <a class="btn btn-outline" href="https://www.google.com/maps/dir/?api=1&destination=St+Mary%27s+Complex%2C+13+Waverley+St%2C+Bootle%2C+Liverpool+L20+4AP" target="_blank" rel="noopener">Open in Google Maps</a>
+              </div>
+            </div>
             <div class="map-address">
               <strong>DIY Tools Library CIC</strong>
               <p>St Mary's Complex, 13 Waverley St<br>Bootle, Liverpool L20 4AP</p>
@@ -1308,7 +1358,7 @@
         DIY TOOLS LIBRARY CIC · Company No. 17341747 · Registered in England and Wales ·
         Community Interest Company limited by guarantee.<br>
         Serving Anfield (L4), Walton &amp; Fazakerley (L9), Bootle (L20), Litherland &amp; Seaforth (L21), Waterloo (L22) and Crosby (L23).<br>
-        <a href="privacy-policy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a>
+        <a href="privacy-policy.html">Privacy Policy</a> · <a href="terms.html">Terms of Service</a> · <button type="button" id="cookieSettingsBtn" class="cookie-settings-link">Cookie settings</button>
       </div>
     </div>
   </footer>
@@ -1452,6 +1502,110 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeAllTips(null);
       });
+    });
+  </script>
+
+
+  <!-- Cookie consent, gated Google Analytics & gated Google Maps -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const GA_ID = "G-XBL0T56KR1";
+      const CONSENT_KEY = "diyToolsConsent";           // "granted|<timestamp>" or "denied|<timestamp>"
+      const CONSENT_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // ask again after 12 months
+      let memChoice = null;                              // fallback if storage is blocked
+
+      const banner = document.getElementById("cookieBanner");
+      const mapCard = document.getElementById("mapCard");
+      const mapPlaceholder = document.getElementById("mapPlaceholder");
+      const loadMapBtn = document.getElementById("loadMapBtn");
+
+      function readConsent() {
+        let raw = memChoice;
+        try { raw = localStorage.getItem(CONSENT_KEY) || memChoice; } catch (e) { /* storage blocked */ }
+        if (!raw) return null;
+        const [choice, ts] = raw.split("|");
+        if (ts && Date.now() - Number(ts) > CONSENT_MAX_AGE) return null;
+        return choice === "granted" || choice === "denied" ? choice : null;
+      }
+      function writeConsent(choice) {
+        memChoice = choice + "|" + Date.now();
+        try { localStorage.setItem(CONSENT_KEY, memChoice); } catch (e) { /* lasts for this visit only */ }
+      }
+
+      function loadAnalytics() {
+        if (window.__gaLoaded) { window["ga-disable-" + GA_ID] = false; return; }
+        window.__gaLoaded = true;
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () { window.dataLayer.push(arguments); };
+        window.gtag("js", new Date());
+        window.gtag("config", GA_ID);
+        const s = document.createElement("script");
+        s.async = true;
+        s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+        document.head.appendChild(s);
+      }
+      function stopAnalytics() {
+        window["ga-disable-" + GA_ID] = true;   // stops any hits from an already-loaded tag
+        const names = document.cookie.split(";").map((c) => c.split("=")[0].trim())
+          .filter((n) => n === "_ga" || n === "_gid" || n === "_gat" || n.indexOf("_ga_") === 0);
+        const parts = location.hostname.split(".");
+        const gone = "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+        names.forEach((n) => {
+          document.cookie = n + gone;
+          for (let i = 0; i < parts.length - 1; i++) {
+            const d = parts.slice(i).join(".");
+            document.cookie = n + gone + "; domain=" + d;
+            document.cookie = n + gone + "; domain=." + d;
+          }
+        });
+      }
+
+      function loadMap() {
+        if (!mapCard || mapCard.querySelector("iframe")) return;
+        const f = document.createElement("iframe");
+        f.title = mapCard.dataset.mapTitle;
+        f.src = mapCard.dataset.mapSrc;
+        f.loading = "lazy";
+        f.referrerPolicy = "no-referrer-when-downgrade";
+        f.setAttribute("allowfullscreen", "");
+        mapCard.insertBefore(f, mapPlaceholder);
+        if (mapPlaceholder) mapPlaceholder.hidden = true;
+      }
+      function unloadMap() {
+        const f = mapCard && mapCard.querySelector("iframe");
+        if (f) f.remove();
+        if (mapPlaceholder) mapPlaceholder.hidden = false;
+      }
+
+      function fitBannerSpace() {
+        document.body.style.paddingBottom = banner && !banner.hidden ? banner.offsetHeight + 20 + "px" : "";
+      }
+      function showBanner(focus) {
+        if (!banner) return;
+        banner.hidden = false;
+        fitBannerSpace();
+        if (focus) banner.focus();
+      }
+      function choose(choice) {
+        writeConsent(choice);
+        if (choice === "granted") { loadAnalytics(); loadMap(); } else { stopAnalytics(); unloadMap(); }
+        if (banner) banner.hidden = true;
+        fitBannerSpace();
+      }
+
+      if (loadMapBtn) loadMapBtn.addEventListener("click", loadMap);   // one-off, without accepting cookies generally
+      const acceptBtn = document.getElementById("cookieAccept");
+      const declineBtn = document.getElementById("cookieDecline");
+      const settingsBtn = document.getElementById("cookieSettingsBtn");
+      if (acceptBtn) acceptBtn.addEventListener("click", () => choose("granted"));
+      if (declineBtn) declineBtn.addEventListener("click", () => choose("denied"));
+      if (settingsBtn) settingsBtn.addEventListener("click", () => showBanner(true));
+      window.addEventListener("resize", fitBannerSpace);
+
+      const saved = readConsent();
+      if (saved === "granted") { loadAnalytics(); loadMap(); }
+      else if (saved === "denied") { stopAnalytics(); }
+      else { showBanner(false); }
     });
   </script>
 
